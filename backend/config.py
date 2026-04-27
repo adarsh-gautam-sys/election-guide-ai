@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # ── Gemini API ──────────────────────────────────────────
-    gemini_api_key: str = Field(..., alias="GEMINI_API_KEY")
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
 
     # ── Firebase ────────────────────────────────────────────

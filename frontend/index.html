@@ -209,8 +209,8 @@
                     </div>
                 </div>
             </div>
-            <button id="btn-clear" onclick="clearChat()" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors" title="New conversation">
-                <span class="material-symbols-outlined">refresh</span>
+            <button id="btn-clear" onclick="clearChat()" class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant transition-colors" title="New conversation" aria-label="Start a new conversation">
+                <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
             </button>
         </div>
 
@@ -231,9 +231,10 @@
         <!-- Input Bar -->
         <div class="p-4 md:p-6 bg-surface-container-low/60 border-t border-outline-variant/10">
             <div class="relative flex items-center gap-3">
+                <label for="chat-input" class="sr-only">Your message</label>
                 <input id="chat-input" class="flex-grow bg-surface-container-lowest border-none ring-1 ring-outline-variant/30 focus:ring-2 focus:ring-primary/50 rounded-2xl py-3 md:py-4 pl-5 pr-4 text-on-surface placeholder:text-on-surface-variant/40 font-body text-sm md:text-base transition-all" placeholder="Ask about elections... e.g., How do I register to vote?" type="text" maxlength="2000" autocomplete="off"/>
-                <button id="btn-send" onclick="sendMessage()" class="bg-primary hover:bg-primary-container text-on-primary w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-primary/20 shrink-0">
-                    <span class="material-symbols-outlined">send</span>
+                <button id="btn-send" onclick="sendMessage()" class="bg-primary hover:bg-primary-container text-on-primary w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-lg shadow-primary/20 shrink-0" aria-label="Send message">
+                    <span class="material-symbols-outlined" aria-hidden="true">send</span>
                 </button>
             </div>
             <p class="text-center text-[10px] text-on-surface-variant/40 mt-3 uppercase tracking-widest">ElectionGuide AI provides educational information sourced from ECI. Not official legal advice.</p>

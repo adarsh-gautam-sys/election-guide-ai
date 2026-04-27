@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
-# Set the API key for google-genai before importing ADK
+# Set the API key for google-genai before importing ADK.
 os.environ.setdefault("GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
 from config import get_settings
