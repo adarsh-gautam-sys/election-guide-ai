@@ -28,6 +28,7 @@ Thumbs.db
 # ─── Firebase ────────────────
 firebase-debug.log
 .firebase/
+*-firebase-adminsdk-*.json
 
 # ─── Stitch temp files ───────
 frontend/stitch_landing.html
