@@ -286,8 +286,8 @@ async def health_check() -> dict[str, Any]:
     return {"status": "healthy", "service": "ElectionGuide AI", "model": settings.gemini_model}
 
 
-@app.post("/api/chat")
-async def chat(request: ChatRequest) -> dict[str, Any] | JSONResponse:
+@app.post("/api/chat", response_model=None)
+async def chat(request: ChatRequest):
     """Send a message to the election guide agent."""
     session_id = request.session_id or str(uuid.uuid4())
 
@@ -330,8 +330,8 @@ class DemoRequest(BaseModel):
 _demo_session_id: str = ""
 
 
-@app.post("/api/demo")
-async def run_demo(request: DemoRequest) -> dict[str, Any] | JSONResponse:
+@app.post("/api/demo", response_model=None)
+async def run_demo(request: DemoRequest):
     """Run a single demo step — the frontend sends questions one at a time."""
     global _demo_session_id
 
