@@ -21,6 +21,9 @@ from .tools import (
 )
 
 # ─── Model Configuration ─────────────────────────────────────────────────────
+# Uses the model name from env; the google-genai client authenticates via:
+#   - GOOGLE_GENAI_USE_VERTEXAI=1  → Vertex AI Express Mode (AQ. key)
+#   - GOOGLE_GENAI_USE_VERTEXAI=0  → Gemini Developer API (AIza key)
 MODEL_ID = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # ─── Root Agent ──────────────────────────────────────────────────────────────

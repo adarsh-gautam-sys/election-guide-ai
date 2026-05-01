@@ -29,8 +29,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from dotenv import load_dotenv
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
-# Set the API key for google-genai before importing ADK.
-os.environ.setdefault("GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", ""))
 
 from config import get_settings
 from election_agent.agent import root_agent
@@ -105,6 +103,8 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info("ElectionGuide AI starting on port %s", settings.port)
     logger.info("Model: %s", settings.gemini_model)
+    logger.info("GEMINI API KEY length: %s", len(os.environ.get("GEMINI_API_KEY", "")))
+    logger.info("GOOGLE API KEY length: %s", len(os.environ.get("GOOGLE_API_KEY", "")))
 
     # ── Initialize Firebase / Firestore ─────────────────────────────────
     if settings.firebase_project_id:
@@ -230,19 +230,23 @@ async def run_agent(user_message: str, session_id: str) -> tuple[str, list[str]]
     response_parts: list[str] = []
     tools_used: list[str] = []
 
-    async for event in runner.run_async(
-        user_id=user_id, session_id=session_id, new_message=content
-    ):
-        if event.is_final_response():
-            if event.content and event.content.parts:
-                for part in event.content.parts:
-                    if part.text:
-                        response_parts.append(part.text)
-        # Track tool usage
-        if hasattr(event, 'function_calls') and event.function_calls:
-            for fc in event.function_calls:
-                if hasattr(fc, 'name'):
-                    tools_used.append(fc.name)
+    try:
+        async for event in runner.run_async(
+            user_id=user_id, session_id=session_id, new_message=content
+        ):
+            if event.is_final_response():
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if part.text:
+                            response_parts.append(part.text)
+            # Track tool usage
+            if hasattr(event, 'function_calls') and event.function_calls:
+                for fc in event.function_calls:
+                    if hasattr(fc, 'name'):
+                        tools_used.append(fc.name)
+    except Exception as e:
+        logger.error(f"Error running agent: {e}", exc_info=True)
+        raise
 
     full_response = "\n".join(response_parts) if response_parts else "I'm sorry, I couldn't generate a response. Please try again."
     return full_response, tools_used
