@@ -185,15 +185,19 @@ See [docs/prompt_evolution.md](docs/prompt_evolution.md) for the full iteration 
 
 ---
 
-## 📊 Google Services Used
+## 📊 Google Services Integration
 
-| Service | Purpose |
-|---------|---------|
-| **Gemini 2.5 Flash** | LLM for reasoning, tool selection, and response generation |
-| **Google ADK** | Agent framework with FunctionTool orchestration |
-| **Cloud Run** | Serverless container deployment (auto-scaling, HTTPS) |
-| **Firebase** | Session persistence (Firestore) and project management |
-| **Stitch MCP** | UI design system ("Civic Prism" theme generation) |
+ElectionGuide AI is built from the ground up to showcase the power and scalability of the **Google Cloud Ecosystem**.
+
+| Service | Category | Technical Implementation |
+|---------|----------|--------------------------|
+| **Gemini 2.5 Flash** | **AI & ML** | Core LLM reasoning engine. Chosen for its high-speed performance and state-of-the-art tool-use (function calling) capabilities. |
+| **Google GenAI ADK** | **Development** | The **Agent Development Kit** orchestrates the conversation flow, manages tool execution, and ensures consistent structured outputs. |
+| **Google Cloud Run** | **Compute** | Fully serverless hosting. The app is containerized via Docker and deployed to Cloud Run for automatic scaling, integrated security, and zero-downtime updates. |
+| **Google Firestore** | **Database** | Used for high-speed session persistence. Firestore stores conversation logs and analytical data securely with sub-millisecond latency. |
+| **Google Cloud Logging** | **Operations** | Integrated via `google-cloud-logging` to provide structured production monitoring, error tracking, and performance auditing. |
+| **Firebase Hosting** | **Delivery** | (Optional Layer) Configured for global edge-delivery of static assets and secure routing via Firebase rewrites. |
+| **Google Stitch MCP** | **Design** | Utilized to generate the "Civic Prism" design system, ensuring a high-fidelity, Material-compliant, and accessible user interface. |
 
 ---
 
