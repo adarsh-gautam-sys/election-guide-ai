@@ -56,6 +56,8 @@ function askTopic(idx) {
     scrollToChat();
     const q = TOPICS[idx].query;
     document.getElementById("chat-input").value = q;
+    // Firebase Analytics — track topic card interaction
+    if (window.firebaseLogEvent) window.firebaseLogEvent("topic_click", { topic: TOPICS[idx].title });
     sendMessage();
 }
 
@@ -89,10 +91,13 @@ async function sendMessage() {
             // Rate limited — friendly message + cooldown
             appendBotMsg("⏳ The AI is processing many requests right now. Please wait a moment and try again.");
             cooldownInput(8000);
+            if (window.firebaseLogEvent) window.firebaseLogEvent("rate_limited", { query: text.substring(0, 50) });
         } else if (data.error) {
             appendBotMsg("⚠️ " + data.error);
         } else {
             appendBotMsg(data.response, data.tool_used);
+            // Firebase Analytics — track successful chat
+            if (window.firebaseLogEvent) window.firebaseLogEvent("chat_message", { tool_used: data.tool_used || "none", cached: data.cached || false });
         }
     } catch (err) {
         removeTyping(typingEl);
@@ -188,6 +193,8 @@ function clearChat() {
 
 /* ─── Live Demo ─── */
 async function startLiveDemo() {
+    // Firebase Analytics — track demo launch
+    if (window.firebaseLogEvent) window.firebaseLogEvent("demo_started", { questions: DEMO_QUESTIONS.length });
     const overlay = document.getElementById("demo-overlay");
     const demoChat = document.getElementById("demo-chat");
     const demoProgress = document.getElementById("demo-progress");

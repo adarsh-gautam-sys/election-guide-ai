@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Sessions collection — server-side only (Firebase Admin SDK bypasses rules)
+    // These rules apply to client-side access only
+    match /sessions/{sessionId} {
+      // Allow read for the session owner (matched by user_id field)
+      allow read: if request.auth != null && resource.data.user_id == request.auth.uid;
+      // Deny direct client writes — all writes go through the backend
+      allow write: if false;
+    }
+
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

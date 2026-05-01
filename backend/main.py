@@ -1,6 +1,7 @@
 """
 ElectionGuide AI — FastAPI Server
 Main entry point serving the API endpoints and static frontend.
+Integrates Google Cloud services: Gemini, Firestore, Cloud Logging, Cloud Run.
 """
 
 import os
@@ -49,18 +50,33 @@ from google.genai import types
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
 from cache import response_cache
+from firestore_sessions import FirestoreSessionService, init_firebase
 
-# ── Logging ─────────────────────────────────────────────────────────────────
-logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+# ── Google Cloud Logging ────────────────────────────────────────────────────
+# Uses structured logging on Cloud Run, falls back to standard logging locally.
+try:
+    import google.cloud.logging as cloud_logging
+    cloud_client = cloud_logging.Client()
+    cloud_client.setup_logging(log_level=logging.INFO)
+    logging.info("Google Cloud Logging initialized")
+except Exception:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+    logging.info("Using standard logging (Cloud Logging not available)")
+
 logger = logging.getLogger("electionguide")
 
 # ── Session & Runner ────────────────────────────────────────────────────────
+# ADK uses InMemorySessionService for its internal agent loop.
+# We ALSO use FirestoreSessionService for persistent chat history & analytics.
 session_service = InMemorySessionService()
 runner = Runner(
     agent=root_agent,
     app_name="election_guide_ai",
     session_service=session_service,
 )
+
+# Firestore session service for persistent storage (initialized in lifespan)
+firestore_sessions: FirestoreSessionService | None = None
 
 # ── Rate Limiting: Semaphore + Sliding Window ──────────────────────────────
 _gemini_semaphore = asyncio.Semaphore(3)     # Max 3 concurrent Gemini calls
@@ -85,12 +101,33 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 # ── Lifespan ────────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global firestore_sessions
     settings = get_settings()
-    logger.info("🗳️  ElectionGuide AI starting on port %s", settings.port)
-    logger.info("📡  Model: %s", settings.gemini_model)
+    logger.info("ElectionGuide AI starting on port %s", settings.port)
+    logger.info("Model: %s", settings.gemini_model)
 
-    # Pre-seed cache to save quota — call each tool once and reuse results
-    logger.info("🌱 Pre-seeding cache with static responses...")
+    # ── Initialize Firebase / Firestore ─────────────────────────────────
+    if settings.firebase_project_id:
+        try:
+            sa_path = ""
+            if settings.firebase_service_account_path:
+                # Resolve relative to project root
+                candidate = os.path.join(ROOT_DIR, settings.firebase_service_account_path)
+                if os.path.exists(candidate):
+                    sa_path = candidate
+                elif os.path.exists(settings.firebase_service_account_path):
+                    sa_path = settings.firebase_service_account_path
+            init_firebase(settings.firebase_project_id, sa_path)
+            firestore_sessions = FirestoreSessionService()
+            logger.info("Firestore session persistence ENABLED")
+        except Exception as e:
+            logger.warning("Firestore init failed, falling back to in-memory: %s", e)
+            firestore_sessions = None
+    else:
+        logger.info("No FIREBASE_PROJECT_ID set — using in-memory sessions only")
+
+    # ── Pre-seed cache to save quota ────────────────────────────────────
+    logger.info("Pre-seeding cache with static responses...")
 
     timeline_data = get_election_timeline()
     registration_data = get_voter_registration_guide()
@@ -121,9 +158,9 @@ async def lifespan(app: FastAPI):
             "tool_used": tool_name,
         })
 
-    logger.info("✅ Cache pre-seeded with %d entries", len(preseed_data))
+    logger.info("Cache pre-seeded with %d entries", len(preseed_data))
     yield
-    logger.info("👋  ElectionGuide AI shutting down")
+    logger.info("ElectionGuide AI shutting down")
 
 
 # ── App ─────────────────────────────────────────────────────────────────────
@@ -144,6 +181,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list + [
         "https://electionguide-ai-239331599550.us-central1.run.app",
+        "https://electionguide-ai-7c996.web.app",
+        "https://electionguide-ai-7c996.firebaseapp.com",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST"],
@@ -283,7 +322,32 @@ async def throttled_run_agent(user_message: str, session_id: str) -> tuple[str, 
 @app.get("/api/health")
 async def health_check() -> dict[str, Any]:
     """Health check endpoint for Cloud Run."""
-    return {"status": "healthy", "service": "ElectionGuide AI", "model": settings.gemini_model}
+    return {
+        "status": "healthy",
+        "service": "ElectionGuide AI",
+        "model": settings.gemini_model,
+        "firebase_connected": firestore_sessions is not None,
+        "google_services": [
+            "Gemini 2.5 Flash (ADK)",
+            "Cloud Run",
+            "Cloud Logging",
+            "Firebase Firestore",
+            "Firebase Hosting",
+            "Firebase Analytics",
+        ],
+    }
+
+
+@app.get("/api/sessions/stats")
+async def session_stats() -> dict[str, Any]:
+    """Return Firestore session analytics."""
+    if firestore_sessions:
+        return {
+            "total_sessions": firestore_sessions.get_session_count(),
+            "storage": "firestore",
+            "project": settings.firebase_project_id,
+        }
+    return {"total_sessions": 0, "storage": "in-memory"}
 
 
 @app.post("/api/chat", response_model=None)
@@ -295,6 +359,13 @@ async def chat(request: ChatRequest):
     cached = response_cache.get(request.message)
     if cached:
         logger.info("Returning cached response for: %s", request.message[:50])
+        # Persist to Firestore even for cached responses
+        if firestore_sessions:
+            try:
+                firestore_sessions.save_message(session_id, "user", request.message)
+                firestore_sessions.save_message(session_id, "assistant", cached.get("response", ""), cached.get("tools_used", []))
+            except Exception as e:
+                logger.warning("Firestore save failed (cached): %s", e)
         return {**cached, "session_id": session_id, "cached": True}
 
     try:
@@ -308,6 +379,15 @@ async def chat(request: ChatRequest):
         }
         # Cache the response
         response_cache.set(request.message, {"response": response_text, "tools_used": tools_used, "tool_used": tool_used})
+
+        # Persist conversation to Firestore
+        if firestore_sessions:
+            try:
+                firestore_sessions.save_message(session_id, "user", request.message)
+                firestore_sessions.save_message(session_id, "assistant", response_text, tools_used)
+            except Exception as e:
+                logger.warning("Firestore save failed: %s", e)
+
         return result
     except Exception as e:
         err_str = str(e)

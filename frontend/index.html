@@ -275,6 +275,40 @@
 </footer>
 
 <script src="/static/app.js"></script>
+
+<!-- ═══ Firebase SDK — Analytics & Performance ═══ -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+    import { getAnalytics, logEvent } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js";
+    import { getPerformance } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-performance.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyD5igBcwwvvFNat8MIDKuyl9ZsLAYIniOI",
+        authDomain: "electionguide-ai-7c996.firebaseapp.com",
+        projectId: "electionguide-ai-7c996",
+        storageBucket: "electionguide-ai-7c996.firebasestorage.app",
+        messagingSenderId: "239331599550",
+        appId: "1:239331599550:web:828e90b4c3a40a620feaef",
+        measurementId: "G-Z89VK36D64",
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+
+    // Initialize Analytics — tracks page views automatically
+    const analytics = getAnalytics(app);
+    logEvent(analytics, "page_view", { page_title: "ElectionGuide AI" });
+
+    // Initialize Performance Monitoring
+    const perf = getPerformance(app);
+
+    // Expose logEvent globally so app.js can track user interactions
+    window.firebaseLogEvent = (eventName, params) => {
+        try { logEvent(analytics, eventName, params); } catch(e) { /* silent */ }
+    };
+    console.log("Firebase Analytics & Performance initialized");
+</script>
+
 <script>
     // Configure marked for safe HTML rendering
     if (typeof marked !== 'undefined') {
